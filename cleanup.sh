@@ -7,19 +7,16 @@ function cleanup_all {
         systemctl disable $s;
     done
 
-    for x in $(virsh list --all | grep instance- | awk '{print $2}'); do
+    # Just remove running VM's
+    for x in $(virsh list | grep instance- | awk '{print $2}'); do
         virsh destroy $x
         virsh undefine $x
     done
 
-    systemctl stop iptables.service
-    iptables-save > /etc/sysconfig/iptables
-
-    yum remove -y puppet "*ntp*" httpd "rabbitmq-server*" \
+    yum remove -y "rabbitmq-server*" \
         "redis*" "*openstack*" "*neutron*" "*nova*" "*keystone*" \
         "*glance*" "*cinder*" "*heat*" "*ceilometer*" openvswitch \
-        "*mariadb*" "*mongo*" "*memcache*" perl-DBI perl-DBD-MySQL \
-        scsi-target-utils iscsi-initiator-utils \
+        "*mariadb*" "*mongo*" "*memcache*" \
         "rdo-release-*"
 
     for x in nova glance cinder keystone horizon neutron heat ceilometer;do
@@ -33,7 +30,7 @@ function cleanup_all {
         vgremove -f cinder-volumes
     fi
 
-    for x in $(losetup -a | sed -e 's/:.*//g'); do
+    for x in $(losetup -a | grep -v docker | sed -e 's/:.*//g'); do
         losetup -d $x
     done
 }
@@ -44,7 +41,8 @@ echo "This will completely uninstall all openstack-related components."
 echo -n "Are you really sure? (yes/no) "
 read answer
 if [[ $answer == "yes" ]]; then
-    cleanup_all 2>/dev/null
+    # Show everything
+    cleanup_all 
     echo "Finished. Reboot the server to refresh processes."
 else
     echo "Cancelled."
